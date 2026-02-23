@@ -60,17 +60,28 @@ function initScrollReveal() {
 
 async function fetchMenu() {
     try {
-        // Check localStorage first (set by admin panel)
-        const saved = localStorage.getItem('roys_menu');
-        if (saved) {
-            renderMenu(JSON.parse(saved));
+        // Try Supabase first if configured
+        if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') {
+            const { createClient } = window.supabase;
+            const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const { data: categories, error: catErr } = await sb.from('categories').select('*').order('display_order').order('created_at');
+            if (catErr) throw catErr;
+            const { data: items, error: itemErr } = await sb.from('menu_items').select('*').order('display_order').order('created_at');
+            if (itemErr) throw itemErr;
+            const menuData = (categories || []).map(cat => ({
+                category: cat.name,
+                items: (items || []).filter(i => i.category_id === cat.id).map(i => ({
+                    name: i.name, description: i.description,
+                    price: i.price, tag: i.tag, image_url: i.image_url
+                }))
+            }));
+            renderMenu(menuData);
             return;
         }
         // Fallback to static JSON
         const response = await fetch('data/menu.json');
         if (!response.ok) throw new Error('Menu data unavailable');
-        const menuData = await response.json();
-        renderMenu(menuData);
+        renderMenu(await response.json());
     } catch (error) {
         console.error('Menu error:', error);
         document.getElementById('menu-container').innerHTML =
@@ -78,21 +89,30 @@ async function fetchMenu() {
     }
 }
 
-function renderGallery() {
-    const saved = localStorage.getItem('roys_gallery');
-    if (!saved) return; // Use static HTML gallery if no admin data
-
-    const images = JSON.parse(saved);
+async function renderGallery() {
     const grid = document.querySelector('.gallery-grid');
-    if (!grid || images.length === 0) return;
-
-    grid.innerHTML = '';
-    images.forEach(img => {
-        const div = document.createElement('div');
-        div.className = 'gallery-item';
-        div.innerHTML = `<img src="${img.url}" alt="${img.alt}" loading="lazy" onerror="this.parentElement.remove()">`;
-        grid.appendChild(div);
-    });
+    if (!grid) return;
+    try {
+        // Try Supabase first if configured
+        if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') {
+            const { createClient } = window.supabase;
+            const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const { data: images, error } = await sb.from('gallery_images').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (images && images.length > 0) {
+                grid.innerHTML = '';
+                images.forEach(img => {
+                    const div = document.createElement('div');
+                    div.className = 'gallery-item';
+                    div.innerHTML = `<img src="${img.url}" alt="${img.alt}" loading="lazy" onerror="this.parentElement.remove()">`;
+                    grid.appendChild(div);
+                });
+            }
+        }
+        // If not configured, keep the static HTML gallery
+    } catch (error) {
+        console.warn('Gallery fetch error (using static):', error);
+    }
 }
 
 function renderMenu(data) {

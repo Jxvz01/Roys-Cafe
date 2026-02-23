@@ -1,123 +1,59 @@
 /* =============================================
    ROY'S CAFE — ADMIN PANEL JAVASCRIPT
+   Powered by Supabase
    ============================================= */
 
-// ─── CONFIG ───────────────────────────────────
-const ADMIN_PASSWORD = 'admin123';
-const STORAGE_MENU_KEY = 'roys_menu';
-const STORAGE_GALLERY_KEY = 'roys_gallery';
+const STORAGE_BUCKET = 'cafe-images';
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-// Default menu — mirrors menu.json
-const DEFAULT_MENU = [
-    {
-        category: 'Coffee',
-        items: [
-            { id: uid(), name: 'Espresso', description: 'Rich and intense shot of pure coffee.', price: '₹80', tag: 'Classic' },
-            { id: uid(), name: 'Cappuccino', description: 'Espresso with steamed milk and a thick layer of foam.', price: '₹120', tag: 'Popular' },
-            { id: uid(), name: 'Latte', description: 'Espresso with plenty of steamed milk and a thin layer of foam.', price: '₹120', tag: '' }
-        ]
-    },
-    {
-        category: 'Tea',
-        items: [
-            { id: uid(), name: 'Green Tea', description: 'Refreshing and healthy tea leaves steeped to perfection.', price: '₹90', tag: 'Organic' },
-            { id: uid(), name: 'Earl Grey', description: 'Black tea flavored with oil of bergamot.', price: '₹90', tag: '' }
-        ]
-    },
-    {
-        category: 'Pastries',
-        items: [
-            { id: uid(), name: 'Croissant', description: 'Buttery, flaky, and freshly baked every morning.', price: '₹95', tag: 'Fresh' },
-            { id: uid(), name: 'Blueberry Muffin', description: 'Moist muffin packed with fresh blueberries.', price: '₹80', tag: '' }
-        ]
-    }
-];
-
-// Default gallery
-const DEFAULT_GALLERY = [
-    { id: uid(), url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80', alt: 'Cafe Ambience' },
-    { id: uid(), url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80', alt: 'Specialty Coffee' },
-    { id: uid(), url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80', alt: 'Pastry Corner' },
-    { id: uid(), url: 'https://images.unsplash.com/photo-1463797221720-6b07e6426c24?auto=format&fit=crop&w=600&q=80', alt: 'Green Space' },
-    { id: uid(), url: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80', alt: 'Outdoor Seating' },
-    { id: uid(), url: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80', alt: 'Social Gatherings' }
-];
-
-// ─── STATE ───────────────────────────────────
-let menuData = [];
-let galleryData = [];
-let activeCategory = 0;
+let sb = null;
+let categoriesData = [];
+let activeCategoryId = null;
 let pendingDeleteFn = null;
 
-// ─── UTILS ───────────────────────────────────
-function uid() {
-    return '_' + Math.random().toString(36).substr(2, 9);
-}
+// Active tab in gallery modal
+let galleryActiveTab = 'upload';
+let selectedItemFile = null;
+let selectedGalleryFile = null;
 
-function loadMenu() {
-    const saved = localStorage.getItem(STORAGE_MENU_KEY);
-    menuData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_MENU));
-}
+// ─── INIT ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const { createClient } = window.supabase;
+    sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    initAuth();
+    initModalClose();
+    initGalleryTabs();
+    initFileInputs();
+    initDragDrop();
+});
 
-function saveMenu() {
-    localStorage.setItem(STORAGE_MENU_KEY, JSON.stringify(menuData));
-}
-
-function loadGallery() {
-    const saved = localStorage.getItem(STORAGE_GALLERY_KEY);
-    galleryData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_GALLERY));
-}
-
-function saveGallery() {
-    localStorage.setItem(STORAGE_GALLERY_KEY, JSON.stringify(galleryData));
-}
-
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
-    toast.textContent = '';
-    toast.innerHTML = `<span>${icons[type]}</span> ${message}`;
-    toast.className = `toast ${type}`;
-    toast.classList.remove('hidden');
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => toast.classList.add('hidden'), 3000);
-}
-
-function openModal(id) {
-    document.getElementById(id).classList.remove('hidden');
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
-}
-
-function updateDashboardStats() {
-    document.getElementById('stat-categories').textContent = menuData.length;
-    document.getElementById('stat-items').textContent = menuData.reduce((s, c) => s + c.items.length, 0);
-    document.getElementById('stat-gallery').textContent = galleryData.length;
-}
-
-// ─── AUTH ───────────────────────────────────
+// ─── AUTH ────────────────────────────────────
 function initAuth() {
     const loginBtn = document.getElementById('login-btn');
+    const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-pass');
     const toggleBtn = document.getElementById('toggle-pass');
-    const errorEl = document.getElementById('login-error');
 
-    function tryLogin() {
-        if (passInput.value === ADMIN_PASSWORD) {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('admin-app').classList.remove('hidden');
-            initApp();
-        } else {
-            errorEl.classList.remove('hidden');
-            passInput.value = '';
-            passInput.focus();
-        }
-    }
+    // Check existing session
+    sb.auth.getSession().then(({ data: { session } }) => {
+        if (session) showApp();
+    });
 
-    loginBtn.addEventListener('click', tryLogin);
-    passInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+    loginBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const pass = passInput.value;
+        if (!email || !pass) { showLoginError('Please enter your email and password.'); return; }
+
+        setLoginLoading(true);
+        const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+        setLoginLoading(false);
+
+        if (error) { showLoginError(error.message); }
+        else { showApp(); }
+    });
+
+    passInput.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+    emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') passInput.focus(); });
 
     toggleBtn.addEventListener('click', () => {
         const isPass = passInput.type === 'password';
@@ -125,60 +61,118 @@ function initAuth() {
         toggleBtn.innerHTML = `<i class="fas fa-${isPass ? 'eye-slash' : 'eye'}"></i>`;
     });
 
-    document.getElementById('logout-btn').addEventListener('click', () => {
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        await sb.auth.signOut();
         document.getElementById('admin-app').classList.add('hidden');
         document.getElementById('login-screen').classList.remove('hidden');
     });
 }
 
-// ─── NAVIGATION ───────────────────────────────────
+function setLoginLoading(on) {
+    const btn = document.getElementById('login-btn');
+    btn.disabled = on;
+    btn.innerHTML = on
+        ? '<i class="fas fa-spinner fa-spin"></i> Signing in...'
+        : '<i class="fas fa-sign-in-alt"></i> Sign In';
+}
+
+function showLoginError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+function showApp() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('admin-app').classList.remove('hidden');
+    initNavigation();
+    loadDashboard();
+    loadMenuSection();
+    loadGallerySection();
+    document.getElementById('add-category-btn').addEventListener('click', openAddCategory);
+    document.getElementById('add-item-btn').addEventListener('click', openAddItem);
+    document.getElementById('save-item-btn').addEventListener('click', saveItem);
+    document.getElementById('save-category-btn').addEventListener('click', saveCategory);
+    document.getElementById('save-gallery-btn').addEventListener('click', saveGalleryImage);
+    document.getElementById('preview-url-btn').addEventListener('click', previewGalleryUrl);
+    document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+        if (pendingDeleteFn) { pendingDeleteFn(); pendingDeleteFn = null; }
+    });
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        await sb.auth.signOut();
+        location.reload();
+    });
+}
+
+// ─── NAVIGATION ─────────────────────────────
 function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
+    document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', e => {
             e.preventDefault();
             const section = item.dataset.section;
-            navItems.forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             item.classList.add('active');
             document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`section-${section}`).classList.add('active');
             document.getElementById('page-title').textContent = item.textContent.trim();
-            // Update topbar actions per section
             updateTopbarActions(section);
         });
     });
 }
 
 function updateTopbarActions(section) {
-    const container = document.getElementById('topbar-actions');
-    container.innerHTML = '';
+    const c = document.getElementById('topbar-actions');
+    c.innerHTML = '';
     if (section === 'gallery') {
         const btn = document.createElement('button');
         btn.className = 'btn-admin-primary';
         btn.innerHTML = '<i class="fas fa-plus"></i> Add Image';
         btn.addEventListener('click', openGalleryModal);
-        container.appendChild(btn);
+        c.appendChild(btn);
     }
 }
 
-// ─── MENU ───────────────────────────────────
+// ─── DASHBOARD ──────────────────────────────
+async function loadDashboard() {
+    const [{ count: cats }, { count: items }, { count: imgs }] = await Promise.all([
+        sb.from('categories').select('*', { count: 'exact', head: true }),
+        sb.from('menu_items').select('*', { count: 'exact', head: true }),
+        sb.from('gallery_images').select('*', { count: 'exact', head: true })
+    ]);
+    document.getElementById('stat-categories').textContent = cats ?? 0;
+    document.getElementById('stat-items').textContent = items ?? 0;
+    document.getElementById('stat-gallery').textContent = imgs ?? 0;
+}
+
+// ─── MENU — CATEGORIES ──────────────────────
+async function loadMenuSection() {
+    showSkeletonGrid();
+    const { data, error } = await sb.from('categories').select('*').order('display_order').order('created_at');
+    if (error) { showToast('Failed to load categories.', 'error'); return; }
+    categoriesData = data || [];
+    if (categoriesData.length > 0 && !activeCategoryId) {
+        activeCategoryId = categoriesData[0].id;
+    }
+    renderCategoryTabs();
+    renderMenuItems();
+}
+
 function renderCategoryTabs() {
     const container = document.getElementById('category-tabs');
     container.innerHTML = '';
-    menuData.forEach((cat, idx) => {
+    categoriesData.forEach(cat => {
         const tab = document.createElement('div');
-        tab.className = `category-tab ${idx === activeCategory ? 'active' : ''}`;
+        tab.className = `category-tab ${cat.id === activeCategoryId ? 'active' : ''}`;
         tab.innerHTML = `
-            ${cat.category}
+            <span class="tab-name">${cat.name}</span>
             <span class="tab-actions">
                 <button class="tab-btn edit-cat-btn" title="Rename"><i class="fas fa-pencil-alt"></i></button>
                 <button class="tab-btn delete-cat-btn" title="Delete"><i class="fas fa-times"></i></button>
-            </span>
-        `;
+            </span>`;
         tab.addEventListener('click', e => {
-            if (e.target.closest('.edit-cat-btn')) { openEditCategory(idx); return; }
-            if (e.target.closest('.delete-cat-btn')) { confirmDeleteCategory(idx); return; }
-            activeCategory = idx;
+            if (e.target.closest('.edit-cat-btn')) { openEditCategory(cat); return; }
+            if (e.target.closest('.delete-cat-btn')) { confirmDeleteCategory(cat); return; }
+            activeCategoryId = cat.id;
             renderCategoryTabs();
             renderMenuItems();
         });
@@ -186,22 +180,28 @@ function renderCategoryTabs() {
     });
 }
 
-function renderMenuItems() {
+async function renderMenuItems() {
     const grid = document.getElementById('menu-items-grid');
     grid.innerHTML = '';
-    if (menuData.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><i class="fas fa-utensils"></i><p>No categories yet. Add one to get started.</p></div>';
+    if (!activeCategoryId) {
+        grid.innerHTML = '<div class="empty-state"><i class="fas fa-folder-plus"></i><p>No categories yet. Add one to get started.</p></div>';
         return;
     }
-    const cat = menuData[activeCategory];
-    if (!cat || cat.items.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><i class="fas fa-mug-hot"></i><p>No items in this category. Click "Add Item" to create one.</p></div>';
+    const { data: items, error } = await sb.from('menu_items')
+        .select('*')
+        .eq('category_id', activeCategoryId)
+        .order('display_order')
+        .order('created_at');
+    if (error) { showToast('Failed to load items.', 'error'); return; }
+    if (!items || items.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><i class="fas fa-mug-hot"></i><p>No items in this category. Click "Add Item".</p></div>';
         return;
     }
-    cat.items.forEach((item, idx) => {
+    items.forEach(item => {
         const card = document.createElement('div');
         card.className = 'item-card';
         card.innerHTML = `
+            ${item.image_url ? `<div class="item-card-img"><img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.style.display='none'"></div>` : ''}
             <div class="item-card-header">
                 <span class="item-card-name">${item.name}</span>
                 <span class="item-card-price">${item.price}</span>
@@ -211,162 +211,184 @@ function renderMenuItems() {
             <div class="item-card-actions">
                 <button class="card-btn edit-item-btn"><i class="fas fa-pencil-alt"></i> Edit</button>
                 <button class="card-btn delete delete-item-btn"><i class="fas fa-trash"></i> Delete</button>
-            </div>
-        `;
-        card.querySelector('.edit-item-btn').addEventListener('click', () => openEditItem(activeCategory, idx));
-        card.querySelector('.delete-item-btn').addEventListener('click', () => confirmDeleteItem(activeCategory, idx));
+            </div>`;
+        card.querySelector('.edit-item-btn').addEventListener('click', () => openEditItem(item));
+        card.querySelector('.delete-item-btn').addEventListener('click', () => confirmDeleteItem(item));
         grid.appendChild(card);
     });
 }
 
+// ─── MENU — ITEM CRUD ───────────────────────
 function openAddItem() {
-    if (menuData.length === 0) { showToast('Please add a category first.', 'info'); return; }
+    if (!activeCategoryId) { showToast('Add a category first.', 'info'); return; }
     document.getElementById('item-modal-title').textContent = 'Add Menu Item';
     document.getElementById('item-id').value = '';
-    document.getElementById('item-category-key').value = activeCategory;
-    document.getElementById('item-name').value = '';
-    document.getElementById('item-price').value = '';
-    document.getElementById('item-tag').value = '';
-    document.getElementById('item-desc').value = '';
+    document.getElementById('item-category-id').value = activeCategoryId;
+    document.getElementById('item-existing-image').value = '';
+    clearFields(['item-name', 'item-price', 'item-tag', 'item-desc']);
+    clearItemImagePreview();
     openModal('item-modal');
     document.getElementById('item-name').focus();
 }
 
-function openEditItem(catIdx, itemIdx) {
-    const item = menuData[catIdx].items[itemIdx];
+function openEditItem(item) {
     document.getElementById('item-modal-title').textContent = 'Edit Menu Item';
     document.getElementById('item-id').value = item.id;
-    document.getElementById('item-category-key').value = catIdx;
+    document.getElementById('item-category-id').value = item.category_id;
+    document.getElementById('item-existing-image').value = item.image_url || '';
     document.getElementById('item-name').value = item.name;
     document.getElementById('item-price').value = item.price;
     document.getElementById('item-tag').value = item.tag || '';
-    document.getElementById('item-desc').value = item.description;
+    document.getElementById('item-desc').value = item.description || '';
+    clearItemImagePreview();
+    if (item.image_url) {
+        showItemPreview(item.image_url);
+    }
     openModal('item-modal');
-    document.getElementById('item-name').focus();
 }
 
-function saveItem() {
+async function saveItem() {
     const id = document.getElementById('item-id').value;
-    const catIdx = parseInt(document.getElementById('item-category-key').value);
+    const category_id = parseInt(document.getElementById('item-category-id').value);
     const name = document.getElementById('item-name').value.trim();
     const price = document.getElementById('item-price').value.trim();
     const tag = document.getElementById('item-tag').value.trim();
     const description = document.getElementById('item-desc').value.trim();
 
-    if (!name || !price || !description) { showToast('Please fill all required fields.', 'error'); return; }
+    if (!name || !price || !description) { showToast('Fill in all required fields.', 'error'); return; }
 
-    if (id) {
-        const item = menuData[catIdx].items.find(i => i.id === id);
-        Object.assign(item, { name, price, tag, description });
-        showToast('Item updated successfully!');
-    } else {
-        menuData[catIdx].items.push({ id: uid(), name, price, tag, description });
-        showToast('Item added successfully!');
+    setSaveLoading('save-item-btn', true);
+    let image_url = document.getElementById('item-existing-image').value || '';
+
+    // Upload new image if selected
+    if (selectedItemFile) {
+        try {
+            image_url = await uploadFile(selectedItemFile, 'menu', 'item-progress-fill', 'item-upload-status', 'item-upload-progress');
+        } catch (err) {
+            showToast(`Image upload failed: ${err.message}`, 'error');
+            setSaveLoading('save-item-btn', false);
+            return;
+        }
     }
 
-    saveMenu();
-    updateDashboardStats();
-    renderMenuItems();
+    const payload = { category_id, name, description, price, tag, image_url };
+    let error;
+
+    if (id) {
+        ({ error } = await sb.from('menu_items').update(payload).eq('id', id));
+        if (!error) showToast('Item updated!');
+    } else {
+        ({ error } = await sb.from('menu_items').insert(payload));
+        if (!error) showToast('Item added!');
+    }
+
+    setSaveLoading('save-item-btn', false);
+    if (error) { showToast(error.message, 'error'); return; }
+
+    selectedItemFile = null;
     closeModal('item-modal');
+    loadDashboard();
+    renderMenuItems();
 }
 
-function confirmDeleteItem(catIdx, itemIdx) {
-    const item = menuData[catIdx].items[itemIdx];
+function confirmDeleteItem(item) {
     document.getElementById('confirm-message').textContent = `Delete "${item.name}"? This cannot be undone.`;
-    pendingDeleteFn = () => {
-        menuData[catIdx].items.splice(itemIdx, 1);
-        saveMenu();
-        updateDashboardStats();
-        renderMenuItems();
+    pendingDeleteFn = async () => {
+        const { error } = await sb.from('menu_items').delete().eq('id', item.id);
+        if (error) { showToast(error.message, 'error'); return; }
         showToast('Item deleted.', 'info');
         closeModal('confirm-modal');
+        loadDashboard();
+        renderMenuItems();
     };
     openModal('confirm-modal');
 }
 
-// ─── CATEGORIES ───────────────────────────────────
+// ─── MENU — CATEGORY CRUD ───────────────────
 function openAddCategory() {
     document.getElementById('category-modal-title').textContent = 'Add Category';
-    document.getElementById('category-old-name').value = '';
+    document.getElementById('category-edit-id').value = '';
     document.getElementById('category-name').value = '';
     openModal('category-modal');
     document.getElementById('category-name').focus();
 }
 
-function openEditCategory(idx) {
+function openEditCategory(cat) {
     document.getElementById('category-modal-title').textContent = 'Rename Category';
-    document.getElementById('category-old-name').value = idx;
-    document.getElementById('category-name').value = menuData[idx].category;
+    document.getElementById('category-edit-id').value = cat.id;
+    document.getElementById('category-name').value = cat.name;
     openModal('category-modal');
-    document.getElementById('category-name').focus();
 }
 
-function saveCategory() {
-    const oldIdx = document.getElementById('category-old-name').value;
+async function saveCategory() {
+    const id = document.getElementById('category-edit-id').value;
     const name = document.getElementById('category-name').value.trim();
-    if (!name) { showToast('Category name cannot be empty.', 'error'); return; }
+    if (!name) { showToast('Category name is required.', 'error'); return; }
 
-    if (oldIdx === '') {
-        // Add
-        const exists = menuData.some(c => c.category.toLowerCase() === name.toLowerCase());
-        if (exists) { showToast('Category already exists.', 'error'); return; }
-        menuData.push({ category: name, items: [] });
-        activeCategory = menuData.length - 1;
-        showToast('Category added!');
+    setSaveLoading('save-category-btn', true);
+    let error;
+
+    if (id) {
+        ({ error } = await sb.from('categories').update({ name }).eq('id', id));
+        if (!error) showToast('Category renamed!');
     } else {
-        // Edit
-        menuData[parseInt(oldIdx)].category = name;
-        showToast('Category renamed!');
+        ({ error } = await sb.from('categories').insert({ name }));
+        if (!error) showToast('Category added!');
     }
 
-    saveMenu();
-    updateDashboardStats();
-    renderCategoryTabs();
-    renderMenuItems();
+    setSaveLoading('save-category-btn', false);
+    if (error) { showToast(error.message, 'error'); return; }
+
     closeModal('category-modal');
+    await loadMenuSection();
 }
 
-function confirmDeleteCategory(idx) {
-    const cat = menuData[idx];
-    document.getElementById('confirm-message').textContent = `Delete category "${cat.category}" and all its ${cat.items.length} items? This cannot be undone.`;
-    pendingDeleteFn = () => {
-        menuData.splice(idx, 1);
-        if (activeCategory >= menuData.length) activeCategory = Math.max(0, menuData.length - 1);
-        saveMenu();
-        updateDashboardStats();
-        renderCategoryTabs();
-        renderMenuItems();
+function confirmDeleteCategory(cat) {
+    document.getElementById('confirm-message').textContent = `Delete category "${cat.name}" and ALL its items? This cannot be undone.`;
+    pendingDeleteFn = async () => {
+        const { error } = await sb.from('categories').delete().eq('id', cat.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        if (activeCategoryId === cat.id) activeCategoryId = null;
         showToast('Category deleted.', 'info');
         closeModal('confirm-modal');
+        await loadMenuSection();
+        loadDashboard();
     };
     openModal('confirm-modal');
 }
 
-// ─── GALLERY ───────────────────────────────────
-function renderGallery() {
+// ─── GALLERY ────────────────────────────────
+async function loadGallerySection() {
+    const grid = document.getElementById('gallery-grid-admin');
+    grid.innerHTML = '<div class="gallery-loading">Loading...</div>';
+
+    const { data, error } = await sb.from('gallery_images').select('*').order('created_at', { ascending: false });
+    if (error) { grid.innerHTML = ''; showToast('Failed to load gallery.', 'error'); return; }
+
+    renderGalleryAdmin(data || []);
+}
+
+function renderGalleryAdmin(images) {
     const grid = document.getElementById('gallery-grid-admin');
     grid.innerHTML = '';
 
-    // Add card first
+    // Add button card
     const addCard = document.createElement('div');
     addCard.className = 'gallery-add-card';
     addCard.innerHTML = '<i class="fas fa-plus"></i><span>Add Image</span>';
     addCard.addEventListener('click', openGalleryModal);
     grid.appendChild(addCard);
 
-    galleryData.forEach((img, idx) => {
+    images.forEach(img => {
         const card = document.createElement('div');
         card.className = 'gallery-admin-card';
         card.innerHTML = `
-            <img src="${img.url}" alt="${img.alt}" onerror="this.src='https://placehold.co/400x300/1F2937/9CA3AF?text=Image+Error'">
+            <img src="${img.url}" alt="${img.alt}" onerror="this.src='https://placehold.co/400x300/1F2937/9CA3AF?text=Error'">
             <div class="card-overlay">
-                <button class="delete-gallery-btn"><i class="fas fa-trash"></i> Remove</button>
-            </div>
-        `;
-        card.querySelector('.delete-gallery-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            confirmDeleteGallery(idx);
-        });
+                <div class="card-overlay-info">${img.alt}</div>
+                <button class="del-gallery-btn"><i class="fas fa-trash"></i> Remove</button>
+            </div>`;
+        card.querySelector('.del-gallery-btn').addEventListener('click', () => confirmDeleteGallery(img));
         grid.appendChild(card);
     });
 }
@@ -374,124 +396,226 @@ function renderGallery() {
 function openGalleryModal() {
     document.getElementById('gallery-url').value = '';
     document.getElementById('gallery-alt').value = '';
-    document.getElementById('gallery-preview').classList.add('hidden');
+    document.getElementById('url-preview-wrap').classList.add('hidden');
+    clearGalleryFilePreview();
+    selectedGalleryFile = null;
+    // Reset to upload tab
+    switchGalleryTab('upload');
     openModal('gallery-modal');
-    document.getElementById('gallery-url').focus();
 }
 
-function previewGallery() {
+function previewGalleryUrl() {
     const url = document.getElementById('gallery-url').value.trim();
     if (!url) { showToast('Enter a URL first.', 'error'); return; }
-    const preview = document.getElementById('gallery-preview');
-    const img = document.getElementById('gallery-preview-img');
+    const wrap = document.getElementById('url-preview-wrap');
+    const img = document.getElementById('url-preview-img');
     img.src = url;
-    img.onerror = () => { showToast('Could not load image from this URL.', 'error'); preview.classList.add('hidden'); };
-    img.onload = () => preview.classList.remove('hidden');
+    img.onerror = () => { showToast('Could not load image.', 'error'); wrap.classList.add('hidden'); };
+    img.onload = () => wrap.classList.remove('hidden');
 }
 
-function saveGalleryImage() {
-    const url = document.getElementById('gallery-url').value.trim();
+async function saveGalleryImage() {
     const alt = document.getElementById('gallery-alt').value.trim() || 'Cafe Image';
-    if (!url) { showToast('Please enter an image URL.', 'error'); return; }
+    let url = '';
+    let storage_path = '';
 
-    galleryData.push({ id: uid(), url, alt });
-    saveGallery();
-    updateDashboardStats();
-    renderGallery();
+    setSaveLoading('save-gallery-btn', true);
+
+    if (galleryActiveTab === 'upload') {
+        if (!selectedGalleryFile) { showToast('Select an image file first.', 'error'); setSaveLoading('save-gallery-btn', false); return; }
+        try {
+            const path = await uploadFileRaw(selectedGalleryFile, 'gallery', 'gallery-progress-fill', 'gallery-upload-status', 'gallery-upload-progress');
+            storage_path = path;
+            const { data: { publicUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+            url = publicUrl;
+        } catch (err) {
+            showToast(`Upload failed: ${err.message}`, 'error');
+            setSaveLoading('save-gallery-btn', false);
+            return;
+        }
+    } else {
+        url = document.getElementById('gallery-url').value.trim();
+        if (!url) { showToast('Enter an image URL.', 'error'); setSaveLoading('save-gallery-btn', false); return; }
+    }
+
+    const { error } = await sb.from('gallery_images').insert({ url, alt, storage_path });
+    setSaveLoading('save-gallery-btn', false);
+    if (error) { showToast(error.message, 'error'); return; }
+
     showToast('Image added to gallery!');
+    selectedGalleryFile = null;
     closeModal('gallery-modal');
+    loadGallerySection();
+    loadDashboard();
 }
 
-function confirmDeleteGallery(idx) {
+function confirmDeleteGallery(img) {
     document.getElementById('confirm-message').textContent = 'Remove this image from the gallery?';
-    pendingDeleteFn = () => {
-        galleryData.splice(idx, 1);
-        saveGallery();
-        updateDashboardStats();
-        renderGallery();
+    pendingDeleteFn = async () => {
+        const { error } = await sb.from('gallery_images').delete().eq('id', img.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        // Also delete from storage if it was an uploaded file
+        if (img.storage_path) {
+            await sb.storage.from(STORAGE_BUCKET).remove([img.storage_path]);
+        }
         showToast('Image removed.', 'info');
         closeModal('confirm-modal');
+        loadGallerySection();
+        loadDashboard();
     };
     openModal('confirm-modal');
 }
 
-// ─── EXPORT / RESET ───────────────────────────────────
-function exportData() {
-    const data = {
-        menu: menuData,
-        gallery: galleryData,
-        exported: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'roys-cafe-data.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Data exported!');
+// ─── IMAGE UPLOAD ───────────────────────────
+async function uploadFile(file, folder, progressFillId, statusId, progressWrapperId) {
+    const path = await uploadFileRaw(file, folder, progressFillId, statusId, progressWrapperId);
+    const { data: { publicUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    return publicUrl;
 }
 
-function resetToDefaults() {
-    document.getElementById('confirm-message').textContent = 'Reset all menu and gallery data to defaults? This cannot be undone.';
-    pendingDeleteFn = () => {
-        localStorage.removeItem(STORAGE_MENU_KEY);
-        localStorage.removeItem(STORAGE_GALLERY_KEY);
-        loadMenu();
-        loadGallery();
-        activeCategory = 0;
-        updateDashboardStats();
-        renderCategoryTabs();
-        renderMenuItems();
-        renderGallery();
-        showToast('Reset to defaults.', 'info');
-        closeModal('confirm-modal');
-    };
-    openModal('confirm-modal');
-}
+async function uploadFileRaw(file, folder, progressFillId, statusId, progressWrapperId) {
+    if (file.size > MAX_FILE_SIZE) throw new Error('File exceeds 10MB limit.');
+    const ext = file.name.split('.').pop().toLowerCase();
+    const path = `${folder}/${Date.now()}-${Math.random().toString(36).substr(2, 6)}.${ext}`;
 
-// ─── INIT ───────────────────────────────────
-function initApp() {
-    loadMenu();
-    loadGallery();
-    updateDashboardStats();
-    renderCategoryTabs();
-    renderMenuItems();
-    renderGallery();
-    initNavigation();
+    // Show progress
+    document.getElementById(progressWrapperId).classList.remove('hidden');
+    document.getElementById(statusId).textContent = 'Uploading...';
+    simulateProgress(progressFillId, statusId);
 
-    // Menu section buttons
-    document.getElementById('add-item-btn').addEventListener('click', openAddItem);
-    document.getElementById('add-category-btn').addEventListener('click', openAddCategory);
-    document.getElementById('save-item-btn').addEventListener('click', saveItem);
-    document.getElementById('save-category-btn').addEventListener('click', saveCategory);
-
-    // Gallery buttons
-    document.getElementById('preview-gallery-btn').addEventListener('click', previewGallery);
-    document.getElementById('save-gallery-btn').addEventListener('click', saveGalleryImage);
-
-    // Dashboard buttons
-    document.getElementById('export-btn').addEventListener('click', exportData);
-    document.getElementById('reset-btn').addEventListener('click', resetToDefaults);
-
-    // Confirm delete
-    document.getElementById('confirm-delete-btn').addEventListener('click', () => {
-        if (pendingDeleteFn) { pendingDeleteFn(); pendingDeleteFn = null; }
+    const { error } = await sb.storage.from(STORAGE_BUCKET).upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
     });
 
-    // Close modals via data-close
+    document.getElementById(progressWrapperId).classList.add('hidden');
+    if (error) throw error;
+    return path;
+}
+
+function simulateProgress(fillId, statusId) {
+    let pct = 0;
+    const fill = document.getElementById(fillId);
+    const label = document.getElementById(statusId);
+    const interval = setInterval(() => {
+        pct = Math.min(pct + Math.random() * 20, 90);
+        fill.style.width = pct + '%';
+        label.textContent = `Uploading... ${Math.round(pct)}%`;
+        if (pct >= 90) clearInterval(interval);
+    }, 150);
+}
+
+// ─── FILE INPUTS (select & drag-drop) ───────
+function initFileInputs() {
+    // Item image
+    document.getElementById('item-image-file').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!isValidImage(file)) { showToast('Only JPG, PNG, WebP, HEIC allowed.', 'error'); return; }
+        if (file.size > MAX_FILE_SIZE) { showToast('File is too large (max 10MB).', 'error'); return; }
+        selectedItemFile = file;
+        showItemPreview(URL.createObjectURL(file));
+    });
+
+    document.getElementById('remove-item-image').addEventListener('click', clearItemImagePreview);
+
+    // Gallery image file
+    document.getElementById('gallery-image-file').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!isValidImage(file)) { showToast('Only JPG, PNG, WebP, HEIC allowed.', 'error'); return; }
+        if (file.size > MAX_FILE_SIZE) { showToast('File is too large (max 10MB).', 'error'); return; }
+        selectedGalleryFile = file;
+        showGalleryFilePreview(URL.createObjectURL(file));
+    });
+
+    document.getElementById('remove-gallery-file').addEventListener('click', clearGalleryFilePreview);
+}
+
+function initDragDrop() {
+    setupDropZone('item-upload-zone', file => {
+        if (!isValidImage(file)) { showToast('Only JPG, PNG, WebP, HEIC allowed.', 'error'); return; }
+        if (file.size > MAX_FILE_SIZE) { showToast('Max 10MB allowed.', 'error'); return; }
+        selectedItemFile = file;
+        showItemPreview(URL.createObjectURL(file));
+    });
+
+    setupDropZone('gallery-upload-zone', file => {
+        if (!isValidImage(file)) { showToast('Only JPG, PNG, WebP, HEIC allowed.', 'error'); return; }
+        if (file.size > MAX_FILE_SIZE) { showToast('Max 10MB allowed.', 'error'); return; }
+        selectedGalleryFile = file;
+        showGalleryFilePreview(URL.createObjectURL(file));
+    });
+}
+
+function setupDropZone(zoneId, onFile) {
+    const zone = document.getElementById(zoneId);
+    if (!zone) return;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) onFile(file);
+    });
+}
+
+function isValidImage(file) {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    return allowed.includes(file.type.toLowerCase()) || /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(file.name);
+}
+
+function showItemPreview(src) {
+    document.getElementById('item-upload-prompt').classList.add('hidden');
+    const wrap = document.getElementById('item-image-preview-wrap');
+    document.getElementById('item-preview-img').src = src;
+    wrap.classList.remove('hidden');
+}
+
+function clearItemImagePreview() {
+    selectedItemFile = null;
+    document.getElementById('item-existing-image').value = '';
+    document.getElementById('item-upload-prompt').classList.remove('hidden');
+    document.getElementById('item-image-preview-wrap').classList.add('hidden');
+    document.getElementById('item-image-file').value = '';
+}
+
+function showGalleryFilePreview(src) {
+    document.getElementById('gallery-upload-prompt').classList.add('hidden');
+    document.getElementById('gallery-file-preview-img').src = src;
+    document.getElementById('gallery-file-preview-wrap').classList.remove('hidden');
+}
+
+function clearGalleryFilePreview() {
+    selectedGalleryFile = null;
+    document.getElementById('gallery-upload-prompt').classList.remove('hidden');
+    document.getElementById('gallery-file-preview-wrap').classList.add('hidden');
+    document.getElementById('gallery-image-file').value = '';
+}
+
+// ─── GALLERY TABS ───────────────────────────
+function initGalleryTabs() {
+    document.querySelectorAll('.upload-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchGalleryTab(tab.dataset.tab));
+    });
+}
+
+function switchGalleryTab(tab) {
+    galleryActiveTab = tab;
+    document.querySelectorAll('.upload-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('tab-upload').classList.toggle('hidden', tab !== 'upload');
+    document.getElementById('tab-url').classList.toggle('hidden', tab !== 'url');
+}
+
+// ─── MODAL HELPERS ──────────────────────────
+function initModalClose() {
     document.querySelectorAll('[data-close]').forEach(btn => {
         btn.addEventListener('click', () => closeModal(btn.dataset.close));
     });
-
-    // Close modal on overlay click
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', e => {
-            if (e.target === overlay) overlay.classList.add('hidden');
-        });
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
     });
-
-    // ESC to close modals
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => m.classList.add('hidden'));
@@ -499,7 +623,30 @@ function initApp() {
     });
 }
 
-// ─── BOOTSTRAP ───────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    initAuth();
-});
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ─── UTILITIES ──────────────────────────────
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+    toast.innerHTML = `<span>${icons[type]}</span> ${message}`;
+    toast.className = `toast ${type}`;
+    toast.classList.remove('hidden');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.add('hidden'), 3500);
+}
+
+function setSaveLoading(btnId, on) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = on;
+    if (on) btn.dataset.origHtml = btn.innerHTML;
+    btn.innerHTML = on ? '<i class="fas fa-spinner fa-spin"></i> Saving...' : btn.dataset.origHtml;
+}
+
+function clearFields(ids) { ids.forEach(id => { document.getElementById(id).value = ''; }); }
+
+function showSkeletonGrid() {
+    const grid = document.getElementById('menu-items-grid');
+    grid.innerHTML = Array(3).fill('<div class="item-card skeleton"></div>').join('');
+}

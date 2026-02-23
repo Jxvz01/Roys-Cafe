@@ -31,6 +31,9 @@
 }
 
 /* Loader Styles */
+/* ===========================
+   LOADER & REALISTIC FOG
+   =========================== */
 .loader-overlay {
     position: fixed;
     top: 0;
@@ -41,54 +44,136 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
+    background: #F0EBE3;
+    /* Dense base fog color */
+    overflow: hidden;
 }
 
+/* Core fog panels — wide enough to overlap in the center */
 .fog-layer {
     position: absolute;
-    top: 0;
-    width: 50vw;
-    height: 100vh;
-    background: #F9F5F0;
-    filter: blur(40px);
-    transition: var(--transition-fog);
-    z-index: 1;
-}
-
-.fog-layer::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.1;
-    mix-blend-mode: overlay;
+    top: -5%;
+    height: 110%;
+    width: 56vw;
+    background: linear-gradient(105deg,
+            rgba(240, 235, 227, 1) 0%,
+            rgba(245, 240, 232, 0.98) 40%,
+            rgba(250, 246, 240, 0.92) 70%,
+            rgba(255, 252, 248, 0.75) 100%);
+    transition: transform 2.2s cubic-bezier(0.77, 0, 0.175, 1), opacity 2s ease;
+    z-index: 2;
+    will-change: transform;
+    animation: fogBreath 4s ease-in-out infinite alternate;
 }
 
 .fog-left {
-    left: 0;
-    transform: translateX(0);
-    box-shadow: 50px 0 100px rgba(255, 255, 255, 0.8);
+    left: -3vw;
+    transform-origin: left center;
 }
 
 .fog-right {
-    right: 0;
-    transform: translateX(0);
-    box-shadow: -50px 0 100px rgba(255, 255, 255, 0.8);
+    right: -3vw;
+    transform-origin: right center;
 }
 
+@keyframes fogBreath {
+    0% {
+        transform: scaleY(1) skewY(0deg);
+    }
+
+    50% {
+        transform: scaleY(1.015) skewY(0.3deg);
+    }
+
+    100% {
+        transform: scaleY(0.99) skewY(-0.2deg);
+    }
+}
+
+/* Wisp layers — drifting fog tendrils */
+.fog-wisp {
+    position: absolute;
+    width: 120vw;
+    height: 35vh;
+    left: -10vw;
+    background: radial-gradient(ellipse 70% 60% at 50% 50%,
+            rgba(255, 252, 248, 0.65) 0%,
+            rgba(245, 240, 232, 0.35) 55%,
+            rgba(240, 235, 227, 0) 100%);
+    filter: blur(18px);
+    z-index: 3;
+    border-radius: 50%;
+    will-change: transform, opacity;
+}
+
+.fog-wisp-1 {
+    top: 10%;
+    animation: wispDrift1 7s ease-in-out infinite alternate;
+    opacity: 0.8;
+}
+
+.fog-wisp-2 {
+    top: 40%;
+    animation: wispDrift2 9s ease-in-out 1s infinite alternate;
+    opacity: 0.7;
+    filter: blur(25px);
+}
+
+.fog-wisp-3 {
+    top: 65%;
+    animation: wispDrift1 11s ease-in-out 0.5s infinite alternate;
+    opacity: 0.6;
+}
+
+.fog-wisp-4 {
+    top: 25%;
+    filter: blur(35px);
+    animation: wispDrift2 8s ease-in-out 2s infinite alternate;
+    opacity: 0.5;
+}
+
+@keyframes wispDrift1 {
+    0% {
+        transform: translateX(-4%) scaleX(1);
+    }
+
+    100% {
+        transform: translateX(4%) scaleX(1.04);
+    }
+}
+
+@keyframes wispDrift2 {
+    0% {
+        transform: translateX(3%) scaleX(0.97);
+    }
+
+    100% {
+        transform: translateX(-3%) scaleX(1.03);
+    }
+}
+
+/* Clearing state */
 .loader-overlay.cleared .fog-left {
-    transform: translateX(-100%);
+    transform: translateX(-108%) !important;
+    opacity: 0.3;
 }
 
 .loader-overlay.cleared .fog-right {
-    transform: translateX(100%);
+    transform: translateX(108%) !important;
+    opacity: 0.3;
 }
 
+.loader-overlay.cleared .fog-wisp {
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+/* Loader text content */
 .loader-content {
     position: relative;
-    z-index: 2;
+    z-index: 10;
     text-align: center;
-    transition: opacity 0.8s ease;
+    transition: opacity 0.7s ease 0.2s;
 }
 
 .loader-overlay.cleared .loader-content {
@@ -96,7 +181,6 @@
 }
 
 .loader-logo-text {
-    font-family: 'Inter', sans-serif;
     font-size: 3.5rem;
     font-weight: 800;
     color: var(--color-secondary);
@@ -106,7 +190,6 @@
 }
 
 .loader-logo-sub-text {
-    font-family: 'Inter', sans-serif;
     font-size: 1.5rem;
     font-weight: 300;
     color: var(--color-accent);
@@ -130,18 +213,18 @@
 }
 
 .loader-sub {
-    font-size: 1rem;
+    font-size: 0.85rem;
     color: var(--color-text-muted);
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     text-transform: uppercase;
-    animation: loaderPulse 2s infinite;
+    animation: loaderPulse 2s ease-in-out infinite;
 }
 
 @keyframes loaderPulse {
 
     0%,
     100% {
-        opacity: 0.5;
+        opacity: 0.4;
     }
 
     50% {

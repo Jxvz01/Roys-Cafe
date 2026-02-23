@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initScrollReveal();
     initCursorSpotlight();
     fetchMenu();
+    renderGallery();
 });
 
 function initLoader() {
@@ -59,6 +60,13 @@ function initScrollReveal() {
 
 async function fetchMenu() {
     try {
+        // Check localStorage first (set by admin panel)
+        const saved = localStorage.getItem('roys_menu');
+        if (saved) {
+            renderMenu(JSON.parse(saved));
+            return;
+        }
+        // Fallback to static JSON
         const response = await fetch('data/menu.json');
         if (!response.ok) throw new Error('Menu data unavailable');
         const menuData = await response.json();
@@ -66,8 +74,25 @@ async function fetchMenu() {
     } catch (error) {
         console.error('Menu error:', error);
         document.getElementById('menu-container').innerHTML =
-            '<div class="text-center p-4">Our kitchen is currently updating our fresh selection. Please check back shortly.</div>';
+            '<div class="text-center">Our kitchen is currently updating. Please check back shortly.</div>';
     }
+}
+
+function renderGallery() {
+    const saved = localStorage.getItem('roys_gallery');
+    if (!saved) return; // Use static HTML gallery if no admin data
+
+    const images = JSON.parse(saved);
+    const grid = document.querySelector('.gallery-grid');
+    if (!grid || images.length === 0) return;
+
+    grid.innerHTML = '';
+    images.forEach(img => {
+        const div = document.createElement('div');
+        div.className = 'gallery-item';
+        div.innerHTML = `<img src="${img.url}" alt="${img.alt}" loading="lazy" onerror="this.parentElement.remove()">`;
+        grid.appendChild(div);
+    });
 }
 
 function renderMenu(data) {

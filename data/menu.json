@@ -1,0 +1,59 @@
+[
+  {
+    "category": "Coffee",
+    "items": [
+      {
+        "name": "Espresso",
+        "description": "Rich and intense shot of pure coffee.",
+        "price": "₹3.00",
+        "tag": "Classic"
+      },
+      {
+        "name": "Cappuccino",
+        "description": "Espresso with steamed milk and a thick layer of foam.",
+        "price": "₹4.50",
+        "tag": "Popular"
+      },
+      {
+        "name": "Latte",
+        "description": "Espresso with plenty of steamed milk and a thin layer of foam.",
+        "price": "₹4.50",
+        "tag": ""
+      }
+    ]
+  },
+  {
+    "category": "Tea",
+    "items": [
+      {
+        "name": "Green Tea",
+        "description": "Refreshing and healthy tea leaves steeped to perfection.",
+        "price": "₹3.50",
+        "tag": "Organic"
+      },
+      {
+        "name": "Earl Grey",
+        "description": "Black tea flavored with oil of bergamot.",
+        "price": "₹3.50",
+        "tag": ""
+      }
+    ]
+  },
+  {
+    "category": "Pastries",
+    "items": [
+      {
+        "name": "Croissant",
+        "description": "Buttery, flaky, and freshly baked every morning.",
+        "price": "₹3.50",
+        "tag": "Fresh"
+      },
+      {
+        "name": "Blueberry Muffin",
+        "description": "Moist muffin packed with fresh blueberries.",
+        "price": "₹3.00",
+        "tag": ""
+      }
+    ]
+  }
+]

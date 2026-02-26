@@ -17,8 +17,11 @@
     <div id="login-screen" class="login-screen">
         <div class="login-card">
             <div class="login-brand">
+                <div class="login-brand-icon">
+                    <i class="fas fa-leaf"></i>
+                </div>
                 <div class="login-logo-text">ROY'S</div>
-                <div class="login-logo-sub">CAFE ADMIN</div>
+                <div class="login-logo-sub">Cafe Admin Panel</div>
             </div>
             <div id="login-error" class="login-error hidden"></div>
             <div class="form-group">
@@ -49,19 +52,32 @@
         <!-- SIDEBAR -->
         <aside class="admin-sidebar">
             <div class="sidebar-brand">
-                <span class="brand-main">ROY'S</span>
-                <span class="brand-sub">ADMIN</span>
+                <div class="sidebar-brand-icon">
+                    <i class="fas fa-leaf"></i>
+                </div>
+                <div class="brand-labels">
+                    <span class="brand-main">ROY'S</span>
+                    <span class="brand-sub">Admin</span>
+                </div>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-section="dashboard"><i class="fas fa-chart-pie"></i>
-                    Dashboard</a>
-                <a href="#" class="nav-item" data-section="menu"><i class="fas fa-utensils"></i> Menu</a>
-                <a href="#" class="nav-item" data-section="gallery"><i class="fas fa-images"></i> Gallery</a>
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-section="menu">
+                    <i class="fas fa-utensils"></i> Menu
+                </a>
+                <a href="#" class="nav-item" data-section="gallery">
+                    <i class="fas fa-images"></i> Gallery
+                </a>
             </nav>
             <div class="sidebar-footer">
-                <a href="index.html" target="_blank" class="sidebar-link"><i class="fas fa-external-link-alt"></i> View
-                    Site</a>
-                <button id="logout-btn" class="sidebar-link logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                <a href="index.html" target="_blank" class="sidebar-link">
+                    <i class="fas fa-external-link-alt"></i> View Site
+                </a>
+                <button id="logout-btn" class="sidebar-link logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
             </div>
         </aside>
 
@@ -98,10 +114,10 @@
                     </div>
                 </div>
                 <div class="info-card">
-                    <h3><i class="fas fa-globe"></i> Live & Global</h3>
+                    <h3><i class="fas fa-globe"></i> Live &amp; Global</h3>
                     <p>All changes are saved to Supabase and are <strong>instantly visible to every visitor</strong>
-                        worldwide. Menu and gallery updates go live as soon as you save them — no refresh needed on the
-                        visitor's side.</p>
+                        worldwide. Menu and gallery updates go live as soon as you save them — no refresh needed on
+                        the visitor's side.</p>
                 </div>
             </section>
 
@@ -110,10 +126,12 @@
                 <div class="section-toolbar">
                     <div class="category-tabs" id="category-tabs"></div>
                     <div class="toolbar-right">
-                        <button class="btn-admin-secondary" id="add-category-btn"><i class="fas fa-folder-plus"></i> Add
-                            Category</button>
-                        <button class="btn-admin-primary" id="add-item-btn"><i class="fas fa-plus"></i> Add
-                            Item</button>
+                        <button class="btn-admin-secondary" id="add-category-btn">
+                            <i class="fas fa-folder-plus"></i> Add Category
+                        </button>
+                        <button class="btn-admin-primary" id="add-item-btn">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
                     </div>
                 </div>
                 <div id="menu-items-grid" class="items-grid"></div>
@@ -170,8 +188,9 @@
                         </div>
                         <div id="item-image-preview-wrap" class="upload-preview hidden">
                             <img id="item-preview-img" src="" alt="Preview">
-                            <button type="button" class="remove-preview-btn" id="remove-item-image"><i
-                                    class="fas fa-times"></i></button>
+                            <button type="button" class="remove-preview-btn" id="remove-item-image">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                         <div id="item-upload-progress" class="upload-progress hidden">
                             <div class="progress-bar">
@@ -191,7 +210,7 @@
 
     <!-- Add/Edit Category -->
     <div id="category-modal" class="modal-overlay hidden">
-        <div class="modal">
+        <div class="modal modal-sm">
             <div class="modal-header">
                 <h2 id="category-modal-title">Add Category</h2>
                 <button class="modal-close" data-close="category-modal"><i class="fas fa-times"></i></button>
@@ -237,8 +256,9 @@
                         </div>
                         <div id="gallery-file-preview-wrap" class="upload-preview hidden">
                             <img id="gallery-file-preview-img" src="" alt="Preview">
-                            <button type="button" class="remove-preview-btn" id="remove-gallery-file"><i
-                                    class="fas fa-times"></i></button>
+                            <button type="button" class="remove-preview-btn" id="remove-gallery-file">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                         <div id="gallery-upload-progress" class="upload-progress hidden">
                             <div class="progress-bar">
@@ -259,8 +279,9 @@
                     <div id="url-preview-wrap" class="upload-preview hidden" style="margin-top:12px;max-height:200px">
                         <img id="url-preview-img" src="" alt="Preview" style="height:200px">
                     </div>
-                    <button class="btn-admin-secondary" id="preview-url-btn" style="margin-top:8px"><i
-                            class="fas fa-eye"></i> Preview URL</button>
+                    <button class="btn-admin-secondary" id="preview-url-btn" style="margin-top:10px">
+                        <i class="fas fa-eye"></i> Preview URL
+                    </button>
                 </div>
 
                 <div class="form-group" style="margin-top:20px">
@@ -270,8 +291,9 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-admin-ghost" data-close="gallery-modal">Cancel</button>
-                <button class="btn-admin-primary" id="save-gallery-btn"><i class="fas fa-plus"></i> Add to
-                    Gallery</button>
+                <button class="btn-admin-primary" id="save-gallery-btn">
+                    <i class="fas fa-plus"></i> Add to Gallery
+                </button>
             </div>
         </div>
     </div>
@@ -280,15 +302,18 @@
     <div id="confirm-modal" class="modal-overlay hidden">
         <div class="modal modal-sm">
             <div class="modal-header">
-                <h2><i class="fas fa-exclamation-triangle" style="color:#e74c3c"></i> Confirm Delete</h2>
+                <h2><i class="fas fa-exclamation-triangle" style="color:#ff7b72"></i> Confirm Delete</h2>
                 <button class="modal-close" data-close="confirm-modal"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <p id="confirm-message">Are you sure?</p>
+                <p id="confirm-message" style="color:var(--admin-text-muted);font-size:0.9rem;line-height:1.6;">Are you
+                    sure?</p>
             </div>
             <div class="modal-footer">
                 <button class="btn-admin-ghost" data-close="confirm-modal">Cancel</button>
-                <button class="btn-admin-danger" id="confirm-delete-btn"><i class="fas fa-trash"></i> Delete</button>
+                <button class="btn-admin-danger" id="confirm-delete-btn">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
             </div>
         </div>
     </div>

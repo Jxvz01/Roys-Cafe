@@ -89,7 +89,7 @@ async function fetchMenu() {
 }
 
 async function renderGallery() {
-    const grid = document.querySelector('.gallery-grid');
+    const grid = document.querySelector('.gallery-masonry');
     if (!grid) return;
     try {
         if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') {
@@ -100,12 +100,27 @@ async function renderGallery() {
             if (error) throw error;
             if (images && images.length > 0) {
                 grid.innerHTML = '';
-                images.forEach(img => {
+                images.forEach((img, i) => {
                     const div = document.createElement('div');
-                    div.className = 'gallery-item';
-                    div.innerHTML = `<img src="${img.url}" alt="${img.alt}" loading="lazy" onerror="this.parentElement.remove()">`;
+                    div.className = 'gm-item';
+                    if (i % 5 === 0) div.classList.add('gm-tall');
+                    if (i % 8 === 0) div.classList.add('gm-wide');
+
+                    div.dataset.caption = img.caption || img.alt || 'Gallery';
+                    div.dataset.sub = 'Mysuru Experience';
+                    div.style.setProperty('--gd', `${(i % 10) * 100}ms`);
+
+                    div.innerHTML = `
+                        <img src="${img.url}" alt="${img.alt}" loading="lazy" onerror="this.parentElement.remove()">
+                        <div class="gm-overlay">
+                            <span class="gm-cap">${img.caption || img.alt || 'Gallery'}</span>
+                            <span class="gm-sub">Mysuru Experience</span>
+                        </div>
+                    `;
                     grid.appendChild(div);
                 });
+                // Re-initialize gallery to pick up new items
+                initGallery();
             }
         }
     } catch (error) {
@@ -178,7 +193,10 @@ function initGallery() {
     const glbNext = document.getElementById('glb-next');
     const masonry = document.querySelector('.gallery-masonry');
 
-    if (!lightbox || !items.length) return;
+    if (!lightbox || !items.length) {
+        console.warn('Gallery Lightbox: No lightbox or items found.');
+        return;
+    }
 
     let current = 0;
 
@@ -195,6 +213,8 @@ function initGallery() {
         current = (idx + items.length) % items.length;
         const el = items[current];
         const img = el.querySelector('img');
+        if (!img) return;
+
         glbImg.src = img.src.replace(/w=\d+/, 'w=1400');
         glbImg.alt = img.alt;
         glbCap.textContent = el.dataset.caption || '';
@@ -208,21 +228,26 @@ function initGallery() {
         document.body.style.overflow = '';
     }
 
-    // Open on click
-    items.forEach((item, i) => item.addEventListener('click', () => openAt(i)));
+    // Clean up old listeners (if any) and attach new ones
+    items.forEach((item, i) => {
+        item.onclick = (e) => {
+            e.preventDefault();
+            openAt(i);
+        };
+    });
 
-    glbClose.addEventListener('click', close);
-    glbPrev.addEventListener('click', () => openAt(current - 1));
-    glbNext.addEventListener('click', () => openAt(current + 1));
+    if (glbClose) glbClose.onclick = close;
+    if (glbPrev) glbPrev.onclick = () => openAt(current - 1);
+    if (glbNext) glbNext.onclick = () => openAt(current + 1);
 
     // Backdrop click
-    lightbox.addEventListener('click', e => { if (e.target === lightbox) close(); });
+    lightbox.onclick = (e) => { if (e.target === lightbox) close(); };
 
     // Keyboard
-    document.addEventListener('keydown', e => {
+    document.onkeydown = (e) => {
         if (!lightbox.classList.contains('glb-open')) return;
         if (e.key === 'Escape') close();
         if (e.key === 'ArrowLeft') openAt(current - 1);
         if (e.key === 'ArrowRight') openAt(current + 1);
-    });
+    };
 }

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCursorSpotlight();
     fetchMenu();
     renderGallery();
+    initGallery();
 });
 
 function initLoader() {
@@ -164,4 +165,64 @@ function renderMenu(data) {
 
     // Re-run scroll reveal for newly added menu cards
     initScrollReveal();
+}
+
+function initGallery() {
+    const items = Array.from(document.querySelectorAll('.gm-item'));
+    const lightbox = document.getElementById('gallery-lightbox');
+    const glbImg = document.getElementById('glb-img');
+    const glbCap = document.getElementById('glb-cap');
+    const glbSub = document.getElementById('glb-sub');
+    const glbClose = document.getElementById('glb-close');
+    const glbPrev = document.getElementById('glb-prev');
+    const glbNext = document.getElementById('glb-next');
+    const masonry = document.querySelector('.gallery-masonry');
+
+    if (!lightbox || !items.length) return;
+
+    let current = 0;
+
+    // Staggered reveal when masonry scrolls into view
+    const revealObs = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting) {
+            masonry.classList.add('active');
+            revealObs.disconnect();
+        }
+    }, { threshold: 0.1 });
+    if (masonry) revealObs.observe(masonry);
+
+    function openAt(idx) {
+        current = (idx + items.length) % items.length;
+        const el = items[current];
+        const img = el.querySelector('img');
+        glbImg.src = img.src.replace(/w=\d+/, 'w=1400');
+        glbImg.alt = img.alt;
+        glbCap.textContent = el.dataset.caption || '';
+        glbSub.textContent = el.dataset.sub || '';
+        lightbox.classList.add('glb-open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function close() {
+        lightbox.classList.remove('glb-open');
+        document.body.style.overflow = '';
+    }
+
+    // Open on click
+    items.forEach((item, i) => item.addEventListener('click', () => openAt(i)));
+
+    glbClose.addEventListener('click', close);
+    glbPrev.addEventListener('click', () => openAt(current - 1));
+    glbNext.addEventListener('click', () => openAt(current + 1));
+
+    // Backdrop click
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) close(); });
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+        if (!lightbox.classList.contains('glb-open')) return;
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowLeft') openAt(current - 1);
+        if (e.key === 'ArrowRight') openAt(current + 1);
+    });
 }

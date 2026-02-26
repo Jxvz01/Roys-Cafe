@@ -7,7 +7,7 @@
     <title>Roy's Cafe | Organic & Fresh Experience</title>
     <meta name="description"
         content="Experience premium organic coffee and fresh pastries at Roy's Cafe. The best cafe in Mysuru with a serene green environment.">
-    <link rel="stylesheet" href="css/styles.css?v=5">
+    <link rel="stylesheet" href="css/styles.css?v=6">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -289,28 +289,70 @@
                 <h2 class="section-title">The Gallery</h2>
                 <p class="section-subtitle">Glimpses of our serene atmosphere and handcrafted delights.</p>
             </div>
-            <div class="gallery-grid reveal">
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
-                        alt="Cafe Ambience"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80"
-                        alt="Specialty Coffee"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
-                        alt="Pastry Corner"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1463797221720-6b07e6426c24?auto=format&fit=crop&w=600&q=80"
-                        alt="Green Space"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80"
-                        alt="Outdoor Seating"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80"
-                        alt="Social Gatherings"></div>
+        </div>
+
+        <!-- Full-bleed masonry grid -->
+        <div class="gallery-masonry reveal" id="gallery-grid">
+
+            <div class="gm-item gm-tall" data-caption="Morning Light" data-sub="Mysuru · 7AM" style="--gd:0ms">
+                <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=85"
+                    alt="Cafe Ambience" loading="lazy">
+                <div class="gm-overlay"><span class="gm-cap">Morning Light</span><span class="gm-sub">Mysuru ·
+                        7AM</span></div>
             </div>
+
+            <div class="gm-item" data-caption="The Pour" data-sub="Specialty Coffee" style="--gd:60ms">
+                <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=85"
+                    alt="Specialty Coffee" loading="lazy">
+                <div class="gm-overlay"><span class="gm-cap">The Pour</span><span class="gm-sub">Specialty Coffee</span>
+                </div>
+            </div>
+
+            <div class="gm-item" data-caption="Pastry Corner" data-sub="Baked Daily" style="--gd:120ms">
+                <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=85"
+                    alt="Pastry Corner" loading="lazy">
+                <div class="gm-overlay"><span class="gm-cap">Pastry Corner</span><span class="gm-sub">Baked Daily</span>
+                </div>
+            </div>
+
+            <div class="gm-item gm-wide" data-caption="Green Sanctuary" data-sub="Nature Inside" style="--gd:80ms">
+                <img src="https://images.unsplash.com/photo-1463797221720-6b07e6426c24?auto=format&fit=crop&w=1200&q=85"
+                    alt="Green Space" loading="lazy">
+                <div class="gm-overlay"><span class="gm-cap">Green Sanctuary</span><span class="gm-sub">Nature
+                        Inside</span></div>
+            </div>
+
+            <div class="gm-item" data-caption="Outdoor Seating" data-sub="Open Air" style="--gd:140ms">
+                <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=85"
+                    alt="Outdoor Seating" loading="lazy">
+                <div class="gm-overlay"><span class="gm-cap">Outdoor Seating</span><span class="gm-sub">Open Air</span>
+                </div>
+            </div>
+
+            <div class="gm-item gm-tall" data-caption="After Dark" data-sub="Evening Glow" style="--gd:100ms">
+                <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=85"
+                    alt="Social Gatherings" loading="lazy">
+                <div class="gm-overlay"><span class="gm-cap">After Dark</span><span class="gm-sub">Evening Glow</span>
+                </div>
+            </div>
+
         </div>
     </section>
+
+    <!-- Lightbox -->
+    <div id="gallery-lightbox" class="glb-overlay" role="dialog" aria-modal="true">
+        <button class="glb-close" id="glb-close" aria-label="Close"><i class="fas fa-times"></i></button>
+        <button class="glb-nav glb-prev" id="glb-prev" aria-label="Previous"><i
+                class="fas fa-chevron-left"></i></button>
+        <button class="glb-nav glb-next" id="glb-next" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
+        <div class="glb-frame">
+            <img id="glb-img" src="" alt="">
+            <div class="glb-info">
+                <span id="glb-cap" class="glb-cap"></span>
+                <span id="glb-sub" class="glb-sub"></span>
+            </div>
+        </div>
+    </div>
 
     <!-- Instagram Section -->
     <section id="instagram-feed">
